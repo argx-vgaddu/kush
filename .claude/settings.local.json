@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(uv run:*)",
+      "Bash(python -m pip:*)",
+      "Bash(python3 -m pip:*)",
+      "Bash(where python)",
+      "Bash(pip install:*)",
+      "Bash(C:UsersvgadduAppDataLocalMicrosoftWindowsAppspython.exe --version)",
+      "Bash(\"C:\\Users\\vgaddu\\AppData\\Local\\Microsoft\\WindowsApps\\python.exe\" --version)",
+      "WebSearch",
+      "Bash(py -m pip install:*)",
+      "Bash(py:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
