@@ -7,10 +7,12 @@ This comprehensive benchmark suite compares the performance of SAS simulations a
 
 ## Recent Updates
 
+- **Modular Authentication Architecture**: Authentication logic separated into dedicated `sas_auth.py` module
 - **Improved Folder Structure**: Configuration files moved to `config/`, results to `results/`
 - **Automatic Compute Context Management**: Tool now automatically retrieves and uses SAS Viya compute contexts
 - **Enhanced Error Handling**: Better handling of compute context errors (Error code: 31509)
 - **Organized Output**: All benchmark results and visualizations saved to `results/` directory
+- **Clean Import Structure**: Professional module organization following Python best practices
 
 ## Features
 
@@ -427,6 +429,7 @@ c:\sas\kush\
 │   ├── sas_environment_performance_*.pdf # Publication-quality PDFs
 │   ├── base_local_simulation.log # SAS execution logs
 │   └── base_local_simulation.lst # SAS listing output
+├── sas_auth.py            # Authentication and API client module
 ├── sas_base_casl_comparision.py # Single comparison tool
 ├── sas_environment_benchmark.py # Comprehensive benchmark suite
 ├── test_benchmark.py      # Quick test script

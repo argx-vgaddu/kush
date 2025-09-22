@@ -21,7 +21,7 @@ from typing import Dict, List, Optional
 import pandas as pd
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from sas_base_casl_comparision import (
+from sas_auth import (
     get_sas_tokens,
     get_config,
     SASJobExecutionClient
