@@ -29,3 +29,8 @@ Thumbs.db
 
 # Backup files
 *.bak
+
+results/
+data/
+output/
+config/
