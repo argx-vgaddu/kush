@@ -267,6 +267,9 @@ class SASJobExecutionClient:
         self.job_requests_endpoint = f"{self.job_execution_base}/jobRequests"
         self.job_definitions_endpoint = f"{self.base_url}/jobDefinitions/definitions"
         self.compute_contexts_endpoint = f"{self.base_url}/compute/contexts"
+        
+        # Cache for compute context
+        self._compute_context_id = None
 
     def create_job_definition(self, name: str, code: str, job_type: str = "Compute",
                             parameters: list = None) -> dict:
@@ -300,6 +303,48 @@ class SASJobExecutionClient:
         except requests.exceptions.RequestException as e:
             print(f"Failed to create job definition: {e}")
             raise
+    
+    def get_compute_contexts(self):
+        """Get available compute contexts"""
+        try:
+            response = self.session.get(
+                self.compute_contexts_endpoint,
+                headers={'Accept': 'application/vnd.sas.collection+json'}
+            )
+            
+            if response.status_code == 200:
+                contexts = response.json()
+                return contexts.get('items', [])
+            else:
+                print(f"Failed to get compute contexts: {response.status_code}")
+                return []
+        except Exception as e:
+            print(f"Error getting compute contexts: {e}")
+            return []
+    
+    def get_default_compute_context(self):
+        """Get the default compute context ID"""
+        if self._compute_context_id:
+            return self._compute_context_id
+            
+        contexts = self.get_compute_contexts()
+        
+        # Look for SAS Job Execution context or default context
+        for context in contexts:
+            context_name = context.get('name', '')
+            if 'job execution' in context_name.lower() or 'default' in context_name.lower():
+                self._compute_context_id = context.get('id')
+                print(f"Using compute context: {context_name} (ID: {self._compute_context_id})")
+                return self._compute_context_id
+        
+        # If no default found, use the first available context
+        if contexts:
+            self._compute_context_id = contexts[0].get('id')
+            print(f"Using first available compute context: {contexts[0].get('name')} (ID: {self._compute_context_id})")
+            return self._compute_context_id
+        
+        print("Warning: No compute contexts found")
+        return None
 
     def submit_job(self, job_definition_uri: str = None, job_definition: dict = None,
                    name: str = None, arguments: dict = None) -> dict:
@@ -310,6 +355,19 @@ class SASJobExecutionClient:
         if name:
             job_request["name"] = name
 
+        # Ensure we have compute context in arguments
+        if arguments is None:
+            arguments = {}
+        
+        # Add compute context if not already present
+        if '_contextId' not in arguments and '_contextName' not in arguments and '_sessionId' not in arguments:
+            context_id = self.get_default_compute_context()
+            if context_id:
+                arguments['_contextId'] = context_id
+            else:
+                # Fallback to context name if ID not available
+                arguments['_contextName'] = 'SAS Job Execution compute context'
+        
         if arguments:
             job_request["arguments"] = arguments
 
@@ -454,7 +512,7 @@ def submit_casl_program(client: SASJobExecutionClient):
     """Submit CASL program for simulation processing"""
 
     # Read local setup file first
-    setup_file = "setup.sas"
+    setup_file = "config/setup.sas"
     try:
         with open(setup_file, 'r') as f:
             setup_code = f.read()
@@ -484,11 +542,11 @@ def submit_casl_program(client: SASJobExecutionClient):
         job_type="Compute"
     )
 
-    # Submit job
+    # Submit job with proper compute context
     job = client.submit_job(
         job_definition_uri=f"/jobDefinitions/definitions/{job_def['id']}",
-        name="CASL_Simulation_Job",
-        arguments={"_contextName": "SAS Job Execution compute context"}
+        name="CASL_Simulation_Job"
+        # Note: compute context will be added automatically by submit_job method
     )
 
     # Wait for completion
@@ -501,7 +559,7 @@ def submit_base_sas_program(client: SASJobExecutionClient):
     """Submit BASE SAS program for simulation processing"""
 
     # Read local setup file first
-    setup_file = "setup.sas"
+    setup_file = "config/setup.sas"
     try:
         with open(setup_file, 'r') as f:
             setup_code = f.read()
@@ -531,11 +589,11 @@ def submit_base_sas_program(client: SASJobExecutionClient):
         job_type="Compute"
     )
 
-    # Submit job
+    # Submit job with proper compute context
     job = client.submit_job(
         job_definition_uri=f"/jobDefinitions/definitions/{job_def['id']}",
-        name="BASE_SAS_Simulation_Job",
-        arguments={"_contextName": "SAS Job Execution compute context"}
+        name="BASE_SAS_Simulation_Job"
+        # Note: compute context will be added automatically by submit_job method
     )
 
     # Wait for completion
