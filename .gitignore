@@ -38,4 +38,5 @@ data/sas_tokens.json
 claude.md
 CLAUDE.md
 
-.claude/settings.local.json
+.claude/
+
