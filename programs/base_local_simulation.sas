@@ -17,7 +17,7 @@
  * Version: 1.0 - Local SAS Implementation with common setup
  ******************************************************************************/
 x 'cd C:\sas\kush';
-%include "setup.sas";
+%include "config/setup.sas";
 
 /*=============================================================================
  * SECTION 1: LOCAL FILE PATHS
