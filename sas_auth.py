@@ -425,3 +425,20 @@ def get_sas_tokens():
     # If no valid tokens, start authentication flow
     print("No valid tokens found. Starting authentication flow...")
     return auth_client.authenticate()
+
+if __name__ == "__main__":
+    print("SAS Authentication and API Client Module")
+    print("=" * 70)
+
+    try:
+        # Get authenticated session
+        tokens = get_sas_tokens()
+        access_token = tokens['access_token']
+
+        print(f"Authentication successful!")
+        print(f"Access Token: {access_token[:50]}...")    
+
+    except Exception as e:
+        print(f"Error: {e}")
+
+
