@@ -1,0 +1,31 @@
+# Environment variables and secrets
+.env
+.env.local
+.env.production
+
+# SAS tokens (contains authentication data)
+data/sas_tokens.json
+
+# Python virtual environment
+.venv/
+venv/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# IDE files
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# SAS temporary files
+*.log7
+*.lst7
+
+# Backup files
+*.bak
