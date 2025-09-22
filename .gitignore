@@ -35,4 +35,5 @@ data/
 output/
 config/
 data/sas_tokens.json
+claude.md
 
