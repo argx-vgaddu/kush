@@ -432,7 +432,14 @@ c:\sas\kush\
 ├── sas_auth.py            # Authentication and API client module
 ├── sas_base_casl_comparision.py # Single comparison tool
 ├── sas_environment_benchmark.py # Comprehensive benchmark suite
-├── test_benchmark.py      # Quick test script
+├── tests/                 # Test programs
+│   ├── test_benchmark.py      # Quick test script
+│   ├── test_benchmark_simple.py # Simple benchmark test
+│   ├── test_both_simulations.py # Test both simulation types
+│   ├── test_casl_equivalence.py # CASL equivalence test
+│   ├── test_quick.py          # Quick test
+│   ├── test_sas_studio.py     # SAS Studio test
+│   └── test_simple_job.py     # Simple job test
 ├── pyproject.toml         # uv project configuration
 └── README.md             # This comprehensive guide
 ```
