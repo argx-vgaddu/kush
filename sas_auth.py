@@ -262,12 +262,16 @@ class SASJobExecutionClient:
             'Accept': 'application/json'
         })
 
-        # API endpoints
+        # API endpoints - try both SAS Viya and SAS Studio patterns
         self.job_execution_base = f"{self.base_url}/jobExecution"
         self.jobs_endpoint = f"{self.job_execution_base}/jobs"
         self.job_requests_endpoint = f"{self.job_execution_base}/jobRequests"
         self.job_definitions_endpoint = f"{self.base_url}/jobDefinitions/definitions"
         self.compute_contexts_endpoint = f"{self.base_url}/compute/contexts"
+
+        # Alternative endpoints for SAS Studio
+        self.jobs_endpoint_alt = f"{self.base_url}/jobDefinitions/definitions"
+        self.job_status_endpoint = f"{self.base_url}/jobExecution/jobs"
 
     def get_compute_contexts(self):
         """Get available compute contexts"""
@@ -296,7 +300,7 @@ class SASJobExecutionClient:
             return None
 
         # Look for specific context types in order of preference
-        for preferred_name in ["Job Execution compute context", "default"]:
+        for preferred_name in ["SAS Studio compute context", "Job Execution compute context", "default", "sas studio"]:
             for context in contexts:
                 if context.get('name', '').lower() == preferred_name.lower():
                     context_id = context.get('id')
@@ -351,56 +355,113 @@ class SASJobExecutionClient:
             print(f"Error submitting job: {e}")
             raise
 
+    def get_job_state(self, job_id: str) -> str:
+        """Get the current state of a job"""
+        # Try multiple endpoint patterns
+        endpoints = [
+            f"{self.jobs_endpoint}/{job_id}",
+            f"{self.job_status_endpoint}/{job_id}",
+            f"{self.job_definitions_endpoint}/{job_id}"
+        ]
+
+        for job_url in endpoints:
+            try:
+                print(f"Trying job status endpoint: {job_url}")
+                response = self.session.get(job_url, timeout=30)
+                print(f"Response status: {response.status_code}")
+
+                if response.status_code == 200:
+                    job_info = response.json()
+                    state = job_info.get('state', job_info.get('status', 'unknown')).lower()
+                    print(f"Job state: {state}")
+                    return state
+                elif response.status_code == 404:
+                    print(f"Endpoint {job_url} returned 404, trying next...")
+                    continue
+                else:
+                    print(f"Endpoint {job_url} returned {response.status_code}")
+                    break
+
+            except requests.exceptions.RequestException as e:
+                print(f"Error with endpoint {job_url}: {e}")
+                continue
+
+        print(f"All endpoints failed for job {job_id}")
+        return 'unknown'
+
     def wait_for_job_completion(self, job_id: str, timeout: int = 300) -> dict:
         """Wait for job completion and return final status"""
         start_time = time.time()
-        job_url = f"{self.jobs_endpoint}/{job_id}"
+
+        # Try multiple endpoint patterns
+        endpoints = [
+            f"{self.jobs_endpoint}/{job_id}",
+            f"{self.job_status_endpoint}/{job_id}",
+            f"{self.job_definitions_endpoint}/{job_id}"
+        ]
 
         print(f"Monitoring job {job_id}...")
 
         while time.time() - start_time < timeout:
-            try:
-                response = self.session.get(job_url, timeout=30)
+            for job_url in endpoints:
+                try:
+                    response = self.session.get(job_url, timeout=30)
 
-                if response.status_code == 200:
-                    job_data = response.json()
-                    state = job_data.get('state', 'unknown')
+                    if response.status_code == 200:
+                        job_data = response.json()
+                        state = job_data.get('state', job_data.get('status', 'unknown')).lower()
 
-                    print(f"Job state: {state}")
+                        print(f"Job state: {state}")
 
-                    if state in ['completed', 'failed', 'canceled']:
-                        print(f"Job finished with state: {state}")
-                        return job_data
+                        if state in ['completed', 'failed', 'canceled', 'cancelled']:
+                            print(f"Job finished with state: {state}")
+                            elapsed_time = int((time.time() - start_time) * 1000)
+                            job_data['elapsedTime'] = elapsed_time
+                            return job_data
 
-                    # Wait before next check
-                    time.sleep(2)
-                else:
-                    print(f"Error checking job status: {response.status_code}")
-                    break
+                        break  # Found a working endpoint, break out of endpoint loop
+                    elif response.status_code != 404:
+                        print(f"Error checking job status at {job_url}: {response.status_code}")
+                        break  # Non-404 error, break out of endpoint loop
 
-            except requests.exceptions.RequestException as e:
-                print(f"Error monitoring job: {e}")
-                break
+                except requests.exceptions.RequestException as e:
+                    print(f"Error with endpoint {job_url}: {e}")
+                    continue
+
+            # Wait before next check
+            time.sleep(2)
 
         # Timeout reached
         print(f"Job monitoring timed out after {timeout} seconds")
-        response = self.session.get(job_url, timeout=30)
-        return response.json() if response.status_code == 200 else {}
+
+        # Try one more time with the first endpoint
+        try:
+            response = self.session.get(endpoints[0], timeout=30)
+            if response.status_code == 200:
+                return response.json()
+        except:
+            pass
+
+        return {}
 
 
 def get_config():
     """Get configuration from environment variables"""
     config = {
-        'base_url': os.getenv('SAS_BASE_URL'),
-        'client_id': os.getenv('SAS_CLIENT_ID'),
+        'base_url': os.getenv('SAS_BASE_URL', 'http://localhost'),  # Default to localhost for SAS Studio
+        'client_id': os.getenv('SAS_CLIENT_ID', 'sas.ec'),  # Default SAS Studio client ID
         'username': os.getenv('SAS_USERNAME'),
         'password': os.getenv('SAS_PASSWORD')
     }
 
-    # Validate required config
-    missing_vars = [k for k, v in config.items() if not v]
-    if missing_vars:
-        raise ValueError(f"Missing required environment variables: {missing_vars}")
+    # For SAS Studio, we can use default credentials or prompt for them
+    if not config['username']:
+        print("SAS_USERNAME not set. Using default SAS Studio credentials...")
+        config['username'] = 'sasdemo'  # Common SAS Studio default username
+
+    if not config['password']:
+        print("SAS_PASSWORD not set. Using default SAS Studio credentials...")
+        config['password'] = 'demo123'  # Common SAS Studio default password
 
     return config
 
