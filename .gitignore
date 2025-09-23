@@ -33,6 +33,7 @@ Thumbs.db
 results/
 data/
 output/
+tests/
 config/
 data/sas_tokens.json
 claude.md
