@@ -344,18 +344,62 @@ run;
  *----------------------------------------------------------------------------*/
 
 /* Analyze Stage 1 data using mixed effects model with AR(1) correlation */
-ods output LSMEstimates=casuser.est1st1a 
-           ConvergenceStatus=casuser.cs1st1a;
+proc cas;
+  action mixed.mixed /
+    table={name="data_stg1", groupBy={{name="iterID"}}},
+    class={{vars={"SID","trt","t"}}},
+    model={
+      depVars={{name="chg"}},
+      effects={{vars={"trt","t"}, interaction="BAR"}},
+      printsol=true,
+      dfmethod='RESIDUAL'
+    },
+    repeated={{
+      effects={{vars={'t'}}},
+      subject={{vars={'SID'}}},
+      covtype="AR",
+      order=1
+    }},
+    test={{
+      statements={{
+        terms={
+          {vars={'trt'}},
+          {vars={'t'}},
+          {vars={'trt','t'}, interaction="CROSS"}
+        }
+      }}
+    }},
+    lsmestimate={{
+      statements={{
+        Coeff={{
+          coefficients={
+            {LMatrixValue= 1, levelIndicator={1,5}},
+            {LMatrixValue=-1, levelIndicator={2,5}}
+          },
+          name="W04"
+        }},
+        printcoef=true,
+        /* make terms a LIST of term-specs */
+        terms={{vars={'trt','t'}, interaction="CROSS"}}
+      }}
+    }},
+    outputTables={names={'lsmestimates','convergencestatus'}};
+run;
 
-PROC MIXED DATA=data_stg1;
-    by iterID;
-    CLASS SID trt(ref='1') t;
-    MODEL chg = trt t trt*t / DDFM=KR S;  /* Kenward-Roger DF */
-    REPEATED t / SUBJECT=SID TYPE=AR(1);   /* AR(1) correlation structure */
-    lsmestimate t*trt 'W04'  /* Week 4 treatment difference */
-        0 0 0 1 0 0 0 0 0
-        0 0 0 -1 0 0 0 0 0 / divisor=1 e alpha=0.05;
-RUN;
+
+
+/* Convert CAS output to expected format */
+data casuser.est1st1a;
+    set casuser.lsmestimates;
+    iterID = _grp_;
+    keep iterID Estimate StdErr tValue Probt Alpha Lower Upper;
+run;
+
+data casuser.cs1st1a;
+    set casuser.convergencestatus;
+    iterID = _grp_;
+    keep iterID Status;
+run;
 
 /*-----------------------------------------------------------------------------
  * INTERIM ANALYSIS: CONDITIONAL POWER CALCULATION
@@ -463,18 +507,62 @@ data casuser.dat_stg2;
 run;
 
 /* Analyze Stage 2 data */
-ods output LSMEstimates=casuser.est1st2a 
-           ConvergenceStatus=casuser.cs1st2a;
+proc cas;
+    action mixed.mixed /
+        table={name="dat_stg2", groupBy={{name="iterID"}}},
+        class={{vars={"SID","trt","t"}}},
+        model={
+            depVars={{name="chg"}},
+            effects={{vars={"trt","t"}, interaction="BAR"}},
+            printsol=true,
+            dfmethod='RESIDUAL'
+        },
+        repeated={{
+            effects={{vars={'t'}}},
+            subject={{vars={'SID'}}},
+            covtype="AR",
+            order=1
+        }},
+        test={{
+            statements={{
+                terms={
+                    {vars={'trt'}},
+                    {vars={'t'}},
+                    {vars={'trt','t'}, interaction="CROSS"}
+                }
+            }}
+        }},
+        lsmestimate={{
+            statements={{
+                Coeff={{
+                    /* coefficients must be a flat list */
+                    coefficients={
+                        {LMatrixValue= 1, levelIndicator={1,5}},
+                        {LMatrixValue=-1, levelIndicator={2,5}}
+                    },
+                    name="W04"
+                }},
+                printcoef=true,
+                /* terms must be a list of term objects (even if only one) */
+                terms={{vars={'trt','t'}, interaction="CROSS"}}
+            }}
+        }},
+        outputTables={names={'lsmestimates','convergencestatus'}};
+run;
 
-PROC MIXED DATA=casuser.dat_stg2;
-    by iterID;
-    CLASS SID trt(ref='1') t;
-    MODEL chg = trt t trt*t / DDFM=KR S;
-    REPEATED t / SUBJECT=SID TYPE=AR(1);
-    lsmestimate t*trt 'W04'
-        0 0 0 1 0 0 0 0 0
-        0 0 0 -1 0 0 0 0 0 / divisor=1 e alpha=0.05;
-RUN;
+
+/* Convert CAS output to expected format */
+data casuser.est1st2a;
+    set casuser.lsmestimates;
+    iterID = _grp_;
+    keep iterID Estimate StdErr tValue Probt Alpha Lower Upper;
+run;
+
+data casuser.cs1st2a;
+    set casuser.convergencestatus;
+    iterID = _grp_;
+    keep iterID Status;
+run;
 
 /* Process Stage 2 results */
 data casuser.res2a;
